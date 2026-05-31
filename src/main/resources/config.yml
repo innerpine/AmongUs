@@ -1,0 +1,39 @@
+# ============================================================
+#  AmongUs  -  Murder Mystery / Among Us for Paper 1.21.4
+# ============================================================
+# Locations (lobby, meeting, spawns, tasks) are configured in-game
+# with /amongus admin ...  and stored under "arena:" below.
+# It is strongly recommended to run this on a dedicated minigame
+# world: players have their inventory cleared on join/start.
+
+settings:
+  # Minimum players required before a game can start.
+  min-players: 4
+  # How many impostors to assign. Clamped so crewmates always outnumber them.
+  impostor-count: 1
+  # Seconds before the round actually begins once /amongus start is issued.
+  start-countdown: 10
+  # Seconds an impostor must wait between kills (and after every meeting).
+  kill-cooldown: 30
+  # Maximum distance (blocks) at which an impostor may kill.
+  kill-range: 3.0
+  # How many tasks each crewmate is assigned (clamped to available stations).
+  tasks-per-player: 4
+  # Emergency meeting buttons each living player may use per game.
+  emergency-meetings: 1
+  # Seconds of free discussion before the voting menu opens.
+  discussion-seconds: 20
+  # Seconds players have to cast their vote.
+  voting-seconds: 30
+  # Announce the role of an ejected player ("X was an Impostor").
+  confirm-ejects: true
+  # Seconds the win screen is shown before everyone returns to the lobby.
+  end-screen-seconds: 8
+
+# Do not edit by hand unless you know what you are doing.
+# Populated by the /amongus admin commands.
+arena:
+  lobby: null
+  meeting: null
+  spawns: []
+  tasks: []
