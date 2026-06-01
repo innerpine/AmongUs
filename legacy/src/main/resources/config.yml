@@ -1,0 +1,30 @@
+# ============================================================
+#  AmongUs  -  Murder Mystery / Among Us for Paper 1.16.5
+# ============================================================
+# Locations (lobby, meeting, spawns, tasks, fixes, vents) are configured
+# in-game with /amongus admin ...  Run this on a dedicated minigame world:
+# players have their inventory cleared on join/start.
+
+settings:
+  min-players: 4
+  impostor-count: 1
+  start-countdown: 10
+  kill-cooldown: 30
+  kill-range: 3.0
+  tasks-per-player: 4
+  emergency-meetings: 1
+  sabotage-cooldown: 25
+  reactor-seconds: 40
+  discussion-seconds: 20
+  voting-seconds: 30
+  confirm-ejects: true
+  end-screen-seconds: 8
+
+# Populated by the /amongus admin commands. Do not edit by hand.
+arena:
+  lobby: null
+  meeting: null
+  spawns: []
+  tasks: []
+  fixes: []
+  vents: []

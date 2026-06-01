@@ -34,6 +34,10 @@ win/lose conditions, and full clean-up between rounds.
 - **Paper 1.21.4** (or a 1.21.4 fork such as Purpur). Uses Paper/Adventure APIs.
 - **Java 21** (required by Minecraft 1.21.4).
 
+> **Running Paper 1.16.5?** There's a dedicated backport in [`legacy/`](legacy/README.md)
+> (armor-stand corpses instead of Display entities, legacy text APIs). Build it with
+> `cd legacy && mvn package`.
+
 ## Building
 
 ```bash

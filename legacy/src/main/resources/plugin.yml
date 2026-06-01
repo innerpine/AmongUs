@@ -1,0 +1,20 @@
+name: AmongUs
+version: '${project.version}'
+main: net.innerpine.amongus.AmongUsPlugin
+api-version: '1.16'
+author: innerpine
+description: Murder Mystery / Among Us game mode (Paper 1.16.5 build).
+
+commands:
+  amongus:
+    description: Main AmongUs command.
+    usage: /amongus <join|leave|start|stop|status|admin>
+    aliases: [au, mm, mafia]
+
+permissions:
+  amongus.play:
+    description: Allows a player to join and play games.
+    default: true
+  amongus.admin:
+    description: Allows configuring arenas and forcing game state.
+    default: op
