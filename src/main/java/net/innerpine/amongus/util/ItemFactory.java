@@ -72,6 +72,12 @@ public final class ItemFactory {
                 Component.text("Right-click to call everyone to a vote.", NamedTextColor.GRAY));
     }
 
+    public static ItemStack sabotageItem() {
+        return build(Material.COMPARATOR, "sabotage",
+                Component.text("Sabotage", NamedTextColor.DARK_RED, TextDecoration.BOLD),
+                Component.text("Right-click to open the sabotage menu.", NamedTextColor.GRAY));
+    }
+
     public static ItemStack head(OfflinePlayer owner, Component name, Component... lore) {
         ItemStack item = build(Material.PLAYER_HEAD, null, name, lore);
         ItemMeta meta = item.getItemMeta();

@@ -5,10 +5,12 @@ import net.innerpine.amongus.config.GameSettings;
 import net.innerpine.amongus.corpse.CorpseManager;
 import net.innerpine.amongus.meeting.MeetingManager;
 import net.innerpine.amongus.role.Role;
+import net.innerpine.amongus.sabotage.SabotageManager;
 import net.innerpine.amongus.task.TaskManager;
 import net.innerpine.amongus.util.ItemFactory;
 import net.innerpine.amongus.util.Messages;
 import net.innerpine.amongus.util.SoundUtil;
+import net.innerpine.amongus.vent.VentManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -27,9 +29,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -46,8 +50,11 @@ public final class Game {
     private final TaskManager tasks;
     private final CorpseManager corpses;
     private MeetingManager meetings;
+    private SabotageManager sabotage;
+    private VentManager vent;
 
     private final Map<UUID, GamePlayer> participants = new LinkedHashMap<>();
+    private final Set<UUID> vented = new HashSet<>();
     private GameState state = GameState.WAITING;
 
     private BukkitTask countdownTask;
@@ -62,6 +69,14 @@ public final class Game {
 
     public void setMeetingManager(MeetingManager meetings) {
         this.meetings = meetings;
+    }
+
+    public void setSabotageManager(SabotageManager sabotage) {
+        this.sabotage = sabotage;
+    }
+
+    public void setVentManager(VentManager vent) {
+        this.vent = vent;
     }
 
     // --- accessors ----------------------------------------------------------
@@ -84,6 +99,14 @@ public final class Game {
 
     public MeetingManager meetings() {
         return meetings;
+    }
+
+    public SabotageManager sabotage() {
+        return sabotage;
+    }
+
+    public VentManager vent() {
+        return vent;
     }
 
     public GameState state() {
@@ -386,6 +409,9 @@ public final class Game {
         if (gp == null) {
             return;
         }
+        if (vented.remove(player.getUniqueId())) {
+            player.closeInventory();
+        }
         gp.setAlive(false);
         player.setGameMode(GameMode.ADVENTURE);
         player.setAllowFlight(true);
@@ -418,6 +444,10 @@ public final class Game {
             return;
         }
         state = GameState.MEETING;
+        if (sabotage != null) {
+            sabotage.clearAll();
+        }
+        clearAllVents();
         corpses.removeAll();
         teleportToMeeting();
         freezeAll(true);
@@ -511,6 +541,10 @@ public final class Game {
         if (meetings != null) {
             meetings.cancel();
         }
+        if (sabotage != null) {
+            sabotage.reset();
+        }
+        clearAllVents();
 
         Component title = winner.isImpostor()
                 ? Component.text("Impostors Win", NamedTextColor.RED, TextDecoration.BOLD)
@@ -547,6 +581,10 @@ public final class Game {
         }
         corpses.removeAll();
         tasks.reset();
+        if (sabotage != null) {
+            sabotage.reset();
+        }
+        clearAllVents();
 
         for (Player player : onlineParticipants()) {
             participants.put(player.getUniqueId(), new GamePlayer(player.getUniqueId()));
@@ -582,6 +620,7 @@ public final class Game {
         }
         if (gp.isImpostor()) {
             inv.setItem(0, ItemFactory.killKnife());
+            inv.setItem(1, ItemFactory.sabotageItem());
         }
         if (settings.emergencyMeetings() > 0) {
             inv.setItem(4, ItemFactory.emergencyButton());
@@ -668,13 +707,44 @@ public final class Game {
                 }
                 GamePlayer targetGp = participants.get(target.getUniqueId());
                 boolean targetGhost = targetGp != null && targetGp.isGhost();
-                if (targetGhost && viewerAlive) {
+                boolean targetVented = vented.contains(target.getUniqueId());
+                if (targetVented || (targetGhost && viewerAlive)) {
                     viewer.hidePlayer(plugin, target);
                 } else {
                     viewer.showPlayer(plugin, target);
                 }
             }
         }
+    }
+
+    // --- vents --------------------------------------------------------------
+
+    public boolean isVented(UUID uuid) {
+        return vented.contains(uuid);
+    }
+
+    public void markVented(UUID uuid) {
+        vented.add(uuid);
+        refreshVisibility();
+    }
+
+    public void unmarkVented(UUID uuid) {
+        vented.remove(uuid);
+        refreshVisibility();
+    }
+
+    private void clearAllVents() {
+        if (vented.isEmpty()) {
+            return;
+        }
+        for (UUID id : new ArrayList<>(vented)) {
+            Player player = Bukkit.getPlayer(id);
+            if (player != null) {
+                player.closeInventory();
+            }
+        }
+        vented.clear();
+        refreshVisibility();
     }
 
     private void showToEveryone(Player player) {

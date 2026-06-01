@@ -21,6 +21,10 @@ settings:
   tasks-per-player: 4
   # Emergency meeting buttons each living player may use per game.
   emergency-meetings: 1
+  # Seconds an impostor must wait between sabotages (shared by the team).
+  sabotage-cooldown: 25
+  # Seconds on the reactor-meltdown timer before the impostors win.
+  reactor-seconds: 40
   # Seconds of free discussion before the voting menu opens.
   discussion-seconds: 20
   # Seconds players have to cast their vote.
@@ -37,3 +41,7 @@ arena:
   meeting: null
   spawns: []
   tasks: []
+  # Sabotage fix points: {world, x, y, z, type: LIGHTS|REACTOR}
+  fixes: []
+  # Vent positions impostors can travel between: {world, x, y, z}
+  vents: []

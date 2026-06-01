@@ -2,6 +2,7 @@ package net.innerpine.amongus.command;
 
 import net.innerpine.amongus.game.Game;
 import net.innerpine.amongus.config.GameSettings;
+import net.innerpine.amongus.sabotage.FixType;
 import net.innerpine.amongus.task.TaskStation;
 import net.innerpine.amongus.task.TaskType;
 import net.innerpine.amongus.util.Messages;
@@ -25,7 +26,8 @@ public final class AmongUsCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> ROOT = List.of("join", "leave", "start", "stop", "status", "admin");
     private static final List<String> ADMIN = List.of(
-            "setlobby", "setmeeting", "addspawn", "clearspawns", "addtask", "cleartasks", "reload", "info");
+            "setlobby", "setmeeting", "addspawn", "clearspawns", "addtask", "cleartasks",
+            "addfix", "clearfixes", "addvent", "clearvents", "reload", "info");
 
     private final Game game;
 
@@ -89,6 +91,24 @@ public final class AmongUsCommand implements CommandExecutor, TabCompleter {
                 settings.clearTasks();
                 sender.sendMessage(Messages.success("All task stations cleared."));
             }
+            case "addfix" -> requirePlayer(sender, player -> addFix(player, args));
+            case "clearfixes" -> {
+                settings.clearFixes();
+                sender.sendMessage(Messages.success("All sabotage fix points cleared."));
+            }
+            case "addvent" -> requirePlayer(sender, player -> {
+                org.bukkit.block.Block target = player.getTargetBlockExact(6);
+                if (target == null) {
+                    player.sendMessage(Messages.error("Look directly at the block you want to use as a vent."));
+                    return;
+                }
+                settings.addVent(target.getLocation());
+                player.sendMessage(Messages.success("Vent added (" + settings.vents().size() + " total)."));
+            });
+            case "clearvents" -> {
+                settings.clearVents();
+                sender.sendMessage(Messages.success("All vents cleared."));
+            }
             case "reload" -> {
                 game.plugin().reloadConfig();
                 settings.load();
@@ -119,6 +139,26 @@ public final class AmongUsCommand implements CommandExecutor, TabCompleter {
                 + " at " + target.getX() + ", " + target.getY() + ", " + target.getZ() + "."));
     }
 
+    private void addFix(Player player, String[] args) {
+        if (args.length < 3) {
+            player.sendMessage(Messages.error("Usage: /amongus admin addfix <lights|reactor>"));
+            return;
+        }
+        FixType type = FixType.fromString(args[2]);
+        if (type == null) {
+            player.sendMessage(Messages.error("Unknown fix type. Options: lights, reactor"));
+            return;
+        }
+        Block target = player.getTargetBlockExact(6);
+        if (target == null) {
+            player.sendMessage(Messages.error("Look directly at the block you want to use as a fix point."));
+            return;
+        }
+        game.settings().addFix(target.getLocation(), type);
+        player.sendMessage(Messages.success("Added " + type.name().toLowerCase(Locale.ROOT) + " fix point at "
+                + target.getX() + ", " + target.getY() + ", " + target.getZ() + "."));
+    }
+
     private void sendStatus(CommandSender sender) {
         GameSettings settings = game.settings();
         sender.sendMessage(Messages.accent("AmongUs status"));
@@ -128,6 +168,8 @@ public final class AmongUsCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(line("Meeting", settings.meeting() != null ? "set" : "(falls back to lobby)"));
         sender.sendMessage(line("Spawns", String.valueOf(settings.spawns().size())));
         sender.sendMessage(line("Task stations", String.valueOf(settings.tasks().size())));
+        sender.sendMessage(line("Fix points", String.valueOf(settings.fixes().size())));
+        sender.sendMessage(line("Vents", String.valueOf(settings.vents().size())));
     }
 
     private Component line(String key, String value) {
@@ -182,6 +224,9 @@ public final class AmongUsCommand implements CommandExecutor, TabCompleter {
                 types.add(type.name().toLowerCase(Locale.ROOT));
             }
             return filter(types, args[2]);
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("admin") && args[1].equalsIgnoreCase("addfix")) {
+            return filter(List.of("lights", "reactor"), args[2]);
         }
         return List.of();
     }

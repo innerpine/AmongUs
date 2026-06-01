@@ -1,13 +1,18 @@
 package net.innerpine.amongus.config;
 
 import net.innerpine.amongus.AmongUsPlugin;
+import net.innerpine.amongus.sabotage.FixStation;
+import net.innerpine.amongus.sabotage.FixType;
 import net.innerpine.amongus.task.TaskStation;
 import net.innerpine.amongus.task.TaskType;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,11 +35,15 @@ public final class GameSettings {
     private int votingSeconds;
     private int endScreenSeconds;
     private boolean confirmEjects;
+    private int sabotageCooldown;
+    private int reactorSeconds;
 
     private Location lobby;
     private Location meeting;
     private final List<Location> spawns = new ArrayList<>();
     private final List<TaskStation> tasks = new ArrayList<>();
+    private final List<FixStation> fixes = new ArrayList<>();
+    private final List<Location> vents = new ArrayList<>();
 
     public GameSettings(AmongUsPlugin plugin) {
         this.plugin = plugin;
@@ -54,6 +63,8 @@ public final class GameSettings {
         votingSeconds = Math.max(5, config.getInt("settings.voting-seconds", 30));
         endScreenSeconds = Math.max(1, config.getInt("settings.end-screen-seconds", 8));
         confirmEjects = config.getBoolean("settings.confirm-ejects", true);
+        sabotageCooldown = Math.max(0, config.getInt("settings.sabotage-cooldown", 25));
+        reactorSeconds = Math.max(10, config.getInt("settings.reactor-seconds", 40));
 
         lobby = config.getLocation("arena.lobby");
         meeting = config.getLocation("arena.meeting");
@@ -73,6 +84,46 @@ public final class GameSettings {
                 tasks.add(station);
             }
         }
+
+        fixes.clear();
+        for (Map<?, ?> raw : config.getMapList("arena.fixes")) {
+            FixStation fix = FixStation.deserialize(raw);
+            if (fix != null) {
+                fixes.add(fix);
+            }
+        }
+
+        vents.clear();
+        for (Map<?, ?> raw : config.getMapList("arena.vents")) {
+            Location vent = ventFromMap(raw);
+            if (vent != null) {
+                vents.add(vent);
+            }
+        }
+    }
+
+    private static Location ventFromMap(Map<?, ?> map) {
+        Object worldName = map.get("world");
+        if (worldName == null) {
+            return null;
+        }
+        World world = Bukkit.getWorld(String.valueOf(worldName));
+        if (world == null) {
+            return null;
+        }
+        int x = map.get("x") instanceof Number n ? n.intValue() : 0;
+        int y = map.get("y") instanceof Number n ? n.intValue() : 0;
+        int z = map.get("z") instanceof Number n ? n.intValue() : 0;
+        return new Location(world, x + 0.5, y, z + 0.5);
+    }
+
+    private static Map<String, Object> ventToMap(Location location) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("world", location.getWorld() == null ? null : location.getWorld().getName());
+        map.put("x", location.getBlockX());
+        map.put("y", location.getBlockY());
+        map.put("z", location.getBlockZ());
+        return map;
     }
 
     private void persist() {
@@ -86,6 +137,19 @@ public final class GameSettings {
             serialized.add(station.serialize());
         }
         config.set("arena.tasks", serialized);
+
+        List<Map<String, Object>> serializedFixes = new ArrayList<>();
+        for (FixStation fix : fixes) {
+            serializedFixes.add(fix.serialize());
+        }
+        config.set("arena.fixes", serializedFixes);
+
+        List<Map<String, Object>> serializedVents = new ArrayList<>();
+        for (Location vent : vents) {
+            serializedVents.add(ventToMap(vent));
+        }
+        config.set("arena.vents", serializedVents);
+
         plugin.saveConfig();
     }
 
@@ -133,6 +197,14 @@ public final class GameSettings {
 
     public boolean confirmEjects() {
         return confirmEjects;
+    }
+
+    public int sabotageCooldown() {
+        return sabotageCooldown;
+    }
+
+    public int reactorSeconds() {
+        return reactorSeconds;
     }
 
     // --- arena --------------------------------------------------------------
@@ -183,6 +255,46 @@ public final class GameSettings {
 
     public void clearTasks() {
         tasks.clear();
+        persist();
+    }
+
+    public List<FixStation> fixes() {
+        return Collections.unmodifiableList(fixes);
+    }
+
+    public List<FixStation> fixesOfType(FixType type) {
+        List<FixStation> result = new ArrayList<>();
+        for (FixStation fix : fixes) {
+            if (fix.type() == type) {
+                result.add(fix);
+            }
+        }
+        return result;
+    }
+
+    public FixStation addFix(Location location, FixType type) {
+        FixStation fix = new FixStation(location, type);
+        fixes.add(fix);
+        persist();
+        return fix;
+    }
+
+    public void clearFixes() {
+        fixes.clear();
+        persist();
+    }
+
+    public List<Location> vents() {
+        return Collections.unmodifiableList(vents);
+    }
+
+    public void addVent(Location location) {
+        vents.add(location);
+        persist();
+    }
+
+    public void clearVents() {
+        vents.clear();
         persist();
     }
 

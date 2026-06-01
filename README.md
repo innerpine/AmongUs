@@ -19,6 +19,9 @@ a meeting, and suspects are ejected through a **clickable voting menu**.
 | **Задания (Tasks)** | Admin-placed task stations. Each crewmate is assigned a random subset. Two mini-games: **Calibrate** (a clickable GUI — hit the moving lime pane) and **Download** (a timed channel with an action-bar progress meter). A global boss bar shows overall completion; 100 % is a crew win. |
 | **Голосование (Voting — clickable menu)** | Reports and emergency buttons open a meeting: a discussion timer, then an inventory GUI with one **player head per suspect** plus a **Skip** button. One click = one vote. Votes are tallied; ties or a skip-majority eject no one. |
 | **Трупы из Display (Corpses from Display entities)** | When an impostor kills, a corpse is built from real Display entities: a player-head `ItemDisplay` laid on the ground, a flattened `BlockDisplay` blood pool, a glowing `TextDisplay` name tag, and an `Interaction` hitbox players right-click to report. |
+| **Саботажи (Sabotages)** | Impostors carry a sabotage item that opens a GUI: **Lights** blinds the crew until someone reaches a light panel, and **Reactor** starts a meltdown boss-bar countdown — two crew must stand on two reactor panels to stop it, or the impostors win. A reactor meltdown blocks meetings. Shared team cooldown. |
+| **Чат призраков (Ghost chat)** | Chat is split into channels: the living (and spectators) see normal chat, while dead players get a private `[Ghost]` channel only other ghosts can read — so the dead can strategise without tipping off the living. |
+| **Вентиляция (Vents)** | Impostors right-click a vent to drop in (hidden from everyone) and open a vent-travel GUI to teleport between connected vents; closing the menu or clicking **Exit** climbs back out. |
 
 Plus the connective tissue you'd expect: a lobby, countdown, ghosts (dead players
 keep doing tasks but can't vote or be seen by the living), kill cooldown HUD,
@@ -63,17 +66,19 @@ All locations live in `config.yml` and are configured in-game (requires
 2. `/amongus admin setmeeting` — stand at the discussion area *(optional; falls back to the lobby)*.
 3. `/amongus admin addspawn` — run once at each round-start position (players are spread across them).
 4. Look directly at a block and `/amongus admin addtask calibrate` (or `download`) — repeat to place task stations.
-5. `/amongus admin info` — verify everything is set.
+5. *(Optional)* `/amongus admin addfix lights` and at least two `/amongus admin addfix reactor` to enable sabotages.
+6. *(Optional)* Look at vent blocks and `/amongus admin addvent` (place two or more) to enable vents.
+7. `/amongus admin info` — verify everything is set.
 
 ## Playing
 
 1. Players run `/amongus join` to enter the lobby.
 2. Once `min-players` have joined, anyone runs `/amongus start`.
 3. **Crewmates:** right-click your task-station blocks and complete the mini-game. Fill the task bar to 100 % to win.
-4. **Impostors:** right-click (or hit) a nearby crewmate with the **Kill** knife while off cooldown. A corpse is left behind.
-5. **Everyone alive:** right-click a body to **report** it, or right-click the **Emergency Meeting** bell. Both open the vote.
+4. **Impostors:** right-click (or hit) a nearby crewmate with the **Kill** knife while off cooldown — a corpse is left behind. Use the **Sabotage** item to blind the crew or melt the reactor, and right-click **vents** to hide and travel.
+5. **Everyone alive:** right-click a body to **report** it, or right-click the **Emergency Meeting** bell. Both open the vote. (A reactor meltdown blocks meetings until it's fixed.)
 6. **Voting:** discuss, then click a head to vote — or click **Skip**. The player with the most votes is ejected.
-7. **Ghosts:** dead players turn invisible to the living, can fly, keep doing tasks (which still count!), but can't vote, kill or report.
+7. **Ghosts:** dead players turn invisible to the living, can fly, keep doing tasks (which still count!), but can't vote, kill or report. They get a private ghost chat channel.
 
 ### Win conditions
 
@@ -97,6 +102,10 @@ All locations live in `config.yml` and are configured in-game (requires
 | `/amongus admin clearspawns` | `amongus.admin` | Remove all game spawns. |
 | `/amongus admin addtask <calibrate\|download>` | `amongus.admin` | Add a task station at the block you're looking at. |
 | `/amongus admin cleartasks` | `amongus.admin` | Remove all task stations. |
+| `/amongus admin addfix <lights\|reactor>` | `amongus.admin` | Add a sabotage fix point at the block you're looking at. |
+| `/amongus admin clearfixes` | `amongus.admin` | Remove all fix points. |
+| `/amongus admin addvent` | `amongus.admin` | Add a vent at the block you're looking at. |
+| `/amongus admin clearvents` | `amongus.admin` | Remove all vents. |
 | `/amongus admin reload` | `amongus.admin` | Reload `config.yml`. |
 | `/amongus admin info` | `amongus.admin` | Same as `status`. |
 
@@ -113,6 +122,8 @@ Aliases: `/au`, `/mm`, `/mafia`.
 | `settings.kill-range` | `3.0` | Max kill distance in blocks. |
 | `settings.tasks-per-player` | `4` | Tasks assigned to each crewmate (clamped to available stations). |
 | `settings.emergency-meetings` | `1` | Emergency buttons per player per game. |
+| `settings.sabotage-cooldown` | `25` | Seconds between sabotages (shared by the impostor team). |
+| `settings.reactor-seconds` | `40` | Reactor meltdown timer before the impostors win. |
 | `settings.discussion-seconds` | `20` | Free discussion time before voting opens. |
 | `settings.voting-seconds` | `30` | Time allowed to vote. |
 | `settings.confirm-ejects` | `true` | Announce whether an ejected player was an impostor. |
@@ -130,19 +141,21 @@ src/main/java/net/innerpine/amongus/
 ├── config/GameSettings.java  # config + arena persistence
 ├── corpse/                   # Display-entity corpses
 ├── game/                     # Game state machine, GamePlayer
-├── listener/                 # connection, protection, combat, interact, menu
+├── listener/                 # connection, protection, combat, interact, menu, chat
 ├── meeting/MeetingManager.java # discussion + voting flow
-├── menu/                     # VoteMenu & TaskMenu inventory GUIs
+├── menu/                     # Vote, Task, Sabotage & Vent inventory GUIs
 ├── role/Role.java
+├── sabotage/                 # lights & reactor sabotages, fix points
 ├── task/                     # task types, stations, TaskManager + mini-games
+├── vent/VentManager.java     # impostor vent travel
 └── util/                     # items, messages, sounds, keys
 ```
 
 ## Notes & possible extensions
 
-- **Verified to compile against the Paper 1.21.4 API.** Display/Interaction,
-  Adventure text/boss-bar, and inventory signatures were cross-checked against
-  the official Paper API sources.
-- Deliberately scoped to the four requested pillars. Natural next steps: sabotage
-  events (lights/reactor), a separate ghost chat channel, vent travel, per-arena
-  configs, and customisable task mini-games.
+- **Verified to compile against the Paper 1.21.4 API**, and the shipped jar's
+  bytecode was checked to reference Adventure/Bukkit symbols exactly as a build
+  against the real `paper-api` would (so it links on a live server).
+- Natural next steps: more sabotage types (doors/comms/O₂), vent networks
+  (grouped instead of fully connected), a role-reveal/visor cosmetic, per-arena
+  configs, and additional task mini-games.
